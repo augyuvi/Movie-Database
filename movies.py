@@ -1,23 +1,82 @@
+# ---------------------------------------------------------
+# movies.py
+# Main entry point for the Movie Database project
+# Updated for Codio BONUS part: User Profiles
+# ---------------------------------------------------------
+
 from __future__ import annotations
 import random
 
-import storage.movie_storage_sql as storage
-  # switched from JSON to SQL storage
-import website_generator             # new: for generating website
+import storage.movie_storage_sql as storage   # switched from JSON to SQL storage
+import website_generator                      # for generating website
 
 
-# Simple ANSI colors 
-RESET  = "\033[0m"
-RED    = "\033[31m"
-GREEN  = "\033[32m"
-YELLOW = "\033[33m"
-CYAN   = "\033[36m"
+# Simple ANSI colors for nicer terminal output
+RESET   = "\033[0m"
+RED     = "\033[31m"
+GREEN   = "\033[32m"
+YELLOW  = "\033[33m"
+CYAN    = "\033[36m"
 MAGENTA = "\033[35m"
 
+# Track the currently logged-in user (set in select_user)
+current_user_id: int | None = None
+current_username: str | None = None
+
+
+# ---------- USER HANDLING ----------
+
+def select_user() -> None:
+    """
+    Handles profile selection.
+    - Lists all existing users.
+    - Lets the user pick or create a new profile.
+    - Updates the global variables current_user_id and current_username.
+    """
+    global current_user_id, current_username
+
+    users = storage.get_all_users()
+    if not users:
+        print(f"{YELLOW}No users yet. Please create one.{RESET}")
+        name = input("Enter new user name: ").strip()
+        user = storage.add_user(name)
+        if user:
+            current_user_id = user["id"]
+            current_username = user["name"]
+        return
+
+    print(f"\n{CYAN}Select a user profile:{RESET}")
+    for i, user in enumerate(users, start=1):
+        print(f"{YELLOW}{i}. {user['name']}{RESET}")
+    print(f"{YELLOW}{len(users) + 1}. Create new user{RESET}")
+
+    while True:
+        try:
+            choice = int(input("Enter choice: "))
+            if 1 <= choice <= len(users):
+                selected = users[choice - 1]
+                current_user_id = selected["id"]
+                current_username = selected["name"]
+                print(f"Welcome back, {current_username}! 🎬")
+                return
+            elif choice == len(users) + 1:
+                name = input("Enter new user name: ").strip()
+                user = storage.add_user(name)
+                if user:
+                    current_user_id = user["id"]
+                    current_username = user["name"]
+                return
+            else:
+                print(f"{RED}Invalid choice.{RESET}")
+        except ValueError:
+            print(f"{RED}Please enter a number.{RESET}")
+
+
+# ---------- MENU ----------
 
 def print_menu() -> None:
     """Displays the main menu options for the movie database."""
-    print(f"\n{CYAN}*** My Movies Database ***{RESET}\n")
+    print(f"\n{CYAN}*** {current_username}'s Movies Database ***{RESET}\n")
     print(f"{YELLOW}0. Exit{RESET}")
     print(f"{YELLOW}1. List movies{RESET}")
     print(f"{YELLOW}2. Add movie{RESET}")
@@ -29,8 +88,11 @@ def print_menu() -> None:
     print(f"{YELLOW}8. Movies sorted by rating{RESET}")
     print(f"{YELLOW}9. Movies in chronological order{RESET}")
     print(f"{YELLOW}10. Filter movies{RESET}")
-    print(f"{YELLOW}11. Generate website{RESET}")  # NEW
+    print(f"{YELLOW}11. Generate website{RESET}")
+    print(f"{YELLOW}12. Switch user{RESET}")  # NEW
 
+
+# ---------- INPUT HELPERS ----------
 
 def prompt_non_empty_string(prompt_text: str) -> str:
     """Prompts the user for a non-empty string and returns it."""
@@ -91,38 +153,37 @@ def prompt_optional_int(prompt_text: str) -> int | None:
         return None
 
 
+# ---------- MOVIE ACTIONS ----------
+
 def list_movies() -> None:
-    """Lists all movies stored in the database."""
-    movies = storage.list_movies()
+    """Lists all movies stored in the database for the current user."""
+    movies = storage.list_movies(current_user_id)
     if not movies:
-        print("No movies found.")
+        print(f"{current_username}, your movie collection is empty.")
         return
-    print(f"\n{len(movies)} movie{'s' if len(movies) != 1 else ''} in total")
+    print(f"\n{len(movies)} movie(s) in total")
     for title, info in movies.items():
-        year_value = info.get("year", "Unknown")
-        rating_value = info.get("rating", "N/A")
-        print(f"{title} ({year_value}): {rating_value}")
+        print(f"{title} ({info.get('year', 'Unknown')}): {info.get('rating', 'N/A')}")
 
 
 def add_movie() -> None:
     """
-    Add a new movie into the database.
-    First tries to fetch details (year, rating, poster) from OMDb API.
-    Falls back to manual input if needed.
+    Add a new movie into the database for the current user.
+    - First tries to fetch details (year, rating, poster) from OMDb API.
+    - Falls back to manual input if needed.
     """
     title = prompt_non_empty_string("Enter new movie title: ")
 
     from movie_api import fetch_movie
     year, rating, poster_url = fetch_movie(title)
 
-    # UPDATED: also handle poster_url properly
     if year is None or rating is None or poster_url is None:
         print("Could not fetch complete data from OMDb API. Enter details manually.")
         year = prompt_int_year("Enter release year: ")
-        rating = prompt_float_in_range("Enter rating (0-10): ", 0.0, 10.0)
+        rating = prompt_float_in_range("Enter rating (0-10): ")
         poster_url = input("Enter poster URL (or leave blank): ").strip() or None
 
-    success = storage.add_movie(title, year, rating, poster_url)
+    success = storage.add_movie(current_user_id, title, year, rating, poster_url)
 
     if success:
         print(f"{GREEN}Movie '{title}' added successfully.{RESET}")
@@ -131,17 +192,19 @@ def add_movie() -> None:
 
 
 def delete_movie() -> None:
-    """Prompts user for a title and deletes it from the database."""
+    """Prompts user for a title and deletes it from the current user's collection."""
     title = prompt_non_empty_string("Enter the title to delete: ")
-    storage.delete_movie(title)
+    storage.delete_movie(current_user_id, title)
 
 
 def update_movie() -> None:
-    """Prompts user for a title and updates its rating manually."""
+    """Prompts user for a title and updates its rating (for the current user)."""
     title = prompt_non_empty_string("Enter the title to update: ")
-    new_rating = prompt_float_in_range("Enter new rating (0-10): ", 0.0, 10.0)
-    storage.update_movie(title, new_rating)
+    new_rating = prompt_float_in_range("Enter new rating (0-10): ")
+    storage.update_movie(current_user_id, title, new_rating)
 
+
+# ---------- STATS AND TOOLS ----------
 
 def _compute_average_and_median(ratings: list[float]) -> tuple[float, float]:
     """Helper function: computes average and median from a list of ratings."""
@@ -160,8 +223,8 @@ def _compute_average_and_median(ratings: list[float]) -> tuple[float, float]:
 
 
 def print_statistics() -> None:
-    """Prints average, median, best, and worst movie ratings."""
-    movies = storage.list_movies()
+    """Prints average, median, best, and worst movie ratings for current user."""
+    movies = storage.list_movies(current_user_id)
     if not movies:
         print("No movies found.")
         return
@@ -178,8 +241,8 @@ def print_statistics() -> None:
 
 
 def random_movie() -> None:
-    """Displays a random movie from the database."""
-    movies = storage.list_movies()
+    """Displays a random movie from the current user's database."""
+    movies = storage.list_movies(current_user_id)
     if not movies:
         print("No movies found.")
         return
@@ -189,13 +252,11 @@ def random_movie() -> None:
 
 
 def search_movie() -> None:
-    """Searches for movies containing a given substring in the title."""
+    """Searches for movies containing a given substring in the title (for current user)."""
     query = prompt_non_empty_string("Enter part of the movie title to search: ").lower()
-    movies = storage.list_movies()
-    matches = []
-    for title, info in movies.items():
-        if query in title.lower():
-            matches.append(f"{title} ({info.get('year', 'Unknown')}): {info.get('rating', 'N/A')}")
+    movies = storage.list_movies(current_user_id)
+    matches = [f"{t} ({i.get('year','Unknown')}): {i.get('rating','N/A')}"
+               for t, i in movies.items() if query in t.lower()]
     if matches:
         for line in matches:
             print(line)
@@ -204,8 +265,8 @@ def search_movie() -> None:
 
 
 def sort_movies_by_rating() -> None:
-    """Sorts and displays movies by rating in descending order."""
-    movies = storage.list_movies()
+    """Sorts and displays movies by rating in descending order (current user only)."""
+    movies = storage.list_movies(current_user_id)
     if not movies:
         print("No movies found.")
         return
@@ -217,7 +278,7 @@ def sort_movies_by_rating() -> None:
 
 def sort_movies_chronological() -> None:
     """Sorts and displays movies by release year (ascending or descending)."""
-    movies = storage.list_movies()
+    movies = storage.list_movies(current_user_id)
     if not movies:
         print("No movies found.")
         return
@@ -234,8 +295,8 @@ def sort_movies_chronological() -> None:
 
 
 def filter_movies() -> None:
-    """Filters movies based on optional min rating, start year, and end year."""
-    movies = storage.list_movies()
+    """Filters movies based on optional min rating, start year, and end year (for current user)."""
+    movies = storage.list_movies(current_user_id)
     if not movies:
         print("No movies found.")
         return
@@ -259,6 +320,8 @@ def filter_movies() -> None:
     for line in filtered_lines:
         print(line)
 
+
+# ---------- MENU HANDLER ----------
 
 def handle_menu_choice(user_choice: str) -> bool:
     """Executes the correct function based on the menu choice."""
@@ -286,18 +349,23 @@ def handle_menu_choice(user_choice: str) -> bool:
     elif user_choice == "10":
         filter_movies()
     elif user_choice == "11":
-        website_generator.generate_website()
+        website_generator.generate_website(current_user_id, current_username)
+    elif user_choice == "12":
+        select_user()  # NEW
     else:
-        print(f"{RED}Invalid choice, please enter a number between 0 and 11.{RESET}")
+        print(f"{RED}Invalid choice, please enter a number between 0 and 12.{RESET}")
     return True
 
 
+# ---------- MAIN LOOP ----------
+
 def main() -> None:
-    """Main program loop: shows menu, and handles user input."""
+    """Main program loop: starts with user selection, shows menu, and handles input."""
+    select_user()  # Always start by choosing a profile
     while True:
         print_menu()
         try:
-            user_choice = input(f"{GREEN}Enter choice (0-11): {RESET}").strip()
+            user_choice = input(f"{GREEN}Enter choice (0-12): {RESET}").strip()
         except (EOFError, KeyboardInterrupt):
             print(f"\n{MAGENTA}Bye!{RESET}")
             break
