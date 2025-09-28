@@ -1,5 +1,7 @@
 # website_generator.py
-import movie_storage_sql as storage
+import storage.movie_storage_sql as storage
+
+
 
 def generate_website():
     """Generate index.html using the movies stored in the database."""

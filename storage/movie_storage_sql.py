@@ -2,8 +2,7 @@
 from sqlalchemy import create_engine, text
 
 # SQLite DB file will be created in the current working directory
-DB_URL = "sqlite:///data/movies.db"
-
+DB_URL = "sqlite:///movies.db"
 
 # echo=True prints all SQL — keep ON while developing, OFF later if noisy
 engine = create_engine(DB_URL, echo=True)

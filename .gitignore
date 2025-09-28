@@ -1,0 +1,22 @@
+# python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.venv/
+env/
+venv/
+.pytest_cache/
+.mypy_cache/
+
+# os cruft
+.DS_Store
+
+# local data
+data/*.db
+
+# codio build artifacts
+.codio/
+.guides/
+

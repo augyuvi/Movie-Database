@@ -1,4 +1,5 @@
-from movie_storage_sql import add_movie, list_movies, delete_movie, update_movie
+from storage.movie_storage_sql import add_movie, list_movies, delete_movie, update_movie
+
 
 # Clean up if exists
 delete_movie("Inception")

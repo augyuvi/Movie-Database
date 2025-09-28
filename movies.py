@@ -1,7 +1,8 @@
 from __future__ import annotations
 import random
 
-import movie_storage_sql as storage  # switched from JSON to SQL storage
+import storage.movie_storage_sql as storage
+  # switched from JSON to SQL storage
 import website_generator             # new: for generating website
 
 
