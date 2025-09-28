@@ -20,3 +20,5 @@ data/*.db
 .codio/
 .guides/
 
+data/movies.db
+*.pyc
