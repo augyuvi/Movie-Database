@@ -1,12 +1,34 @@
-# Movie Database (CLI + HTML + OMDb API)
+# Movie Database 🎬
 
-Small movie app that:
-- stores movies in SQLite via SQLAlchemy
-- fetches real data from OMDb (year, rating, poster)
-- generates a static website from a template (`_static/index_template.html`)
+This is my Movie Database project built during Masterschool training on Codio.  
+It lets me create user profiles, add movies, update or delete them, and even generate a personal HTML website with posters.
 
-## Quick start
+## Features
+- Multiple user profiles (each user has their own movie list)
+- Add, delete, update, and search movies
+- View stats: average, median, best, and worst movies
+- Filter and sort movies by rating or year
+- Generate a personal website with posters (saved in `_static/`)
 
-```bash
+## How to Run
+1. Clone this repository:
+   ```bash
+   git clone git@github.com:augyuvi/Movie-Database.git
+   cd Movie-Database
+
+
+
 pip install -r requirements.txt
-python movies.py
+python3 movies.py
+
+Welcome to the Movie App 🎬
+
+Select a user:
+1. Nithya
+2. Create new user
+
+Enter choice: 1
+Welcome back, Nithya!
+
+
+
