@@ -16,11 +16,14 @@ It lets me create user profiles, add movies, update or delete them, and even gen
    git clone git@github.com:augyuvi/Movie-Database.git
    cd Movie-Database
 
-
-
+Install dependencies:
 pip install -r requirements.txt
+
+Run the program:
 python3 movies.py
 
+
+For Example:
 Welcome to the Movie App 🎬
 
 Select a user:
